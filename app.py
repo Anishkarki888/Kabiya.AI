@@ -1,5 +1,5 @@
 import streamlit as st
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
 st.set_page_config(page_title="Kabiya's Baddie AI", page_icon="💅")
@@ -30,20 +30,20 @@ st.markdown("---")
 # Sidebar
 with st.sidebar:
     st.header("🎛️ Baddie Settings")
+    response_length = st.slider("Max Answer Length", 20, 200, 80, 10)
     attitude_level = st.slider("Attitude Level", 0.1, 1.0, 0.8, 0.1)
-    response_length = st.slider("Response Length", 20, 200, 80, 10)
     st.markdown("---")
-    st.info("Using small, CPU-friendly model for Streamlit deployment.")
+    st.info("Hybrid: factual QA + small creative model for fun answers.")
 
 # Main layout
 col1, col2 = st.columns([2,1])
 with col1:
     st.subheader("💬 Ask Queen Kabiya")
     example_prompts = [
-        "How to slay like Kabiya?",
-        "Best comeback for haters?",
+        "What is the capital of Nepal?",
+        "What is 1+1?",
         "Quick confidence boost?",
-        "Main character energy tips"
+        "Best comeback for haters?"
     ]
     selected = st.selectbox("Or pick a baddie topic:", [""] + example_prompts)
     if selected:
@@ -51,7 +51,7 @@ with col1:
     else:
         user_input = st.text_area(
             "Your question:", 
-            placeholder="Ask anything about confidence, glow-up, or being iconic…",
+            placeholder="Ask anything factual or sassy…",
             height=80
         )
 
@@ -71,23 +71,40 @@ if st.button("💋 Get Baddie Advice", type="primary"):
     else:
         with st.spinner("💅 Slaying your question…"):
             try:
-                # Load tokenizer and model
-                tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
-                model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
-
-                prompt = f"Answer in 3-4 short, sassy lines:\n{user_input}"
-                inputs = tokenizer(prompt, return_tensors="pt")
-
-                # Generate response
-                outputs = model.generate(
-                    **inputs,
-                    max_new_tokens=response_length,
-                    temperature=attitude_level
+                # --- Factual QA pipeline ---
+                qa_pipeline = pipeline(
+                    "question-answering",
+                    model="deepset/roberta-base-squad2"
                 )
 
-                response_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-                st.subheader("👑 Queen K Says:")
-                st.success(response_text)
+                # Context can be tiny or generic
+                context = (
+                    "Queen Kabiya is sassy, confident, and always gives short, iconic advice. "
+                    "She slays haters and boosts confidence."
+                )
+
+                result = qa_pipeline(question=user_input, context=context)
+                factual_answer = result.get("answer", "").strip()
+
+                # Check if answer seems reasonable (non-empty / short)
+                if len(factual_answer) > 0 and factual_answer.lower() not in ["unknown", "no answer"]:
+                    st.subheader("👑 Queen K Says (Factual):")
+                    st.success(factual_answer)
+                else:
+                    # --- Fall back to small creative model ---
+                    tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
+                    model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
+
+                    prompt = f"Answer in 3-4 short, sassy lines:\n{user_input}"
+                    inputs = tokenizer(prompt, return_tensors="pt")
+                    outputs = model.generate(
+                        **inputs,
+                        max_new_tokens=response_length,
+                        temperature=attitude_level
+                    )
+                    creative_answer = tokenizer.decode(outputs[0], skip_special_tokens=True)
+                    st.subheader("👑 Queen K Says (Sassy):")
+                    st.success(creative_answer)
 
             except Exception as e:
                 st.error(f"❌ Error generating response:\n{e}")

@@ -3,18 +3,23 @@ from langchain_core.messages import HumanMessage
 import streamlit as st
 import os
 
-# Load token from Streamlit Secrets
+# --- Load HuggingFace token ---
+token_loaded = False
 if "HUGGINGFACEHUB_API_TOKEN" in st.secrets:
     os.environ["HUGGINGFACEHUB_API_TOKEN"] = st.secrets["HUGGINGFACEHUB_API_TOKEN"]
+    token_loaded = True
 else:
-    # Local development fallback
-    from dotenv import load_dotenv
-    load_dotenv()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+        if "HUGGINGFACEHUB_API_TOKEN" in os.environ:
+            token_loaded = True
+    except:
+        pass
 
 st.set_page_config(page_title="Kabiya's Baddie AI", page_icon="💅")
 
 def main():
-    # Styling
     st.markdown("""
     <style>
     .main-header {
@@ -37,12 +42,10 @@ def main():
     st.markdown('<p class="baddie-vibes">💅 Too hot to handle, too cool to care • She slays, AI obeys</p>', unsafe_allow_html=True)
     st.markdown("---")
 
-    # Sidebar
     with st.sidebar:
         st.header("🎛️ Baddie Settings")
         attitude_level = st.slider("Attitude Level", 0.1, 1.0, 0.8, 0.1)
         response_length = st.slider("Response Length", 50, 200, 80, 10)
-
         st.markdown("---")
         st.info("""
         **Baddie Guide:**
@@ -51,21 +54,17 @@ def main():
         - 0.8–1.0: Maximum slayage 🔥
         """)
 
-    # Layout
-    col1, col2 = st.columns([2, 1])
+    col1, col2 = st.columns([2,1])
 
     with col1:
         st.subheader("💬 Ask Queen Kabiya")
-
         prompts = [
             "How to slay like Kabiya?",
             "Best comeback for haters?",
             "Quick confidence boost?",
             "Main character energy tips"
         ]
-
         selected_prompt = st.selectbox("Pick a baddie topic:", [""] + prompts)
-
         if selected_prompt:
             user_input = st.text_area("Your question:", value=selected_prompt, height=80)
         else:
@@ -85,15 +84,17 @@ def main():
 
     st.markdown("---")
 
-    # Button
     if st.button("💋 Get Baddie Advice", type="primary"):
         if not user_input.strip():
             st.warning("👀 Queen needs a question!")
             return
 
+        if not token_loaded:
+            st.error("❌ HuggingFace token not found! Add it to Streamlit Secrets.")
+            return
+
         with st.spinner("💅 Summoning the queen..."):
             try:
-                # Streamlit-safe small model
                 repo_id = "Qwen/Qwen2-0.5B-Instruct"
 
                 llm = HuggingFaceEndpoint(
@@ -102,7 +103,6 @@ def main():
                     temperature=attitude_level,
                     top_p=0.9
                 )
-
                 model = ChatHuggingFace(llm=llm)
 
                 prompt = f"""
@@ -123,7 +123,7 @@ def main():
                 st.success(response.content)
 
             except Exception as e:
-                st.error(f"❌ Error: {str(e)}")
+                st.error(f"❌ Error from model call:\n{str(e)}")
 
     st.markdown("---")
     st.caption("Made for Queen Kabiya • Stay iconic ✨")

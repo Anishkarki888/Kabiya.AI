@@ -66,7 +66,11 @@ def main():
         if selected:
             user_input = st.text_area("Your question:", value=selected, height=80)
         else:
-            user_input = st.text_area("Your question:", placeholder="Ask anything about confidence, glow-up, or being iconic…", height=80)
+            user_input = st.text_area(
+                "Your question:", 
+                placeholder="Ask anything about confidence, glow-up, or being iconic…",
+                height=80
+            )
 
     with col2:
         st.subheader("👑 Baddie Rules")
@@ -88,20 +92,19 @@ def main():
 
         with st.spinner("💅 Slaying your question…"):
             try:
-                # Use small model
                 llm = HuggingFaceEndpoint(
                     repo_id=model_choice,
                     max_new_tokens=response_length,
                     temperature=attitude_level
                 )
 
-                # Some small models like flan-t5-small do NOT support conversational
-                # So fallback to simple text2text generation
+                # Use text2text invoke for small models
                 if model_choice in ["google/flan-t5-small", "t5-small"]:
                     prompt = f"Answer in 3-4 short, sassy lines:\n{user_input}"
-                    response = llm(prompt)
+                    response = llm.invoke(prompt)  # ✅ FIX: use .invoke()
                     st.subheader("👑 Queen K Says:")
                     st.success(response)
+
                 else:
                     # Conversational models
                     model = ChatHuggingFace(llm=llm)

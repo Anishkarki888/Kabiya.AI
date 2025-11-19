@@ -98,12 +98,21 @@ def main():
                     temperature=attitude_level
                 )
 
-                # Use text2text invoke for small models
+                # Handle small text-to-text models
                 if model_choice in ["google/flan-t5-small", "t5-small"]:
                     prompt = f"Answer in 3-4 short, sassy lines:\n{user_input}"
-                    response = llm.invoke(prompt)  # ✅ FIX: use .invoke()
+                    raw_response = llm.invoke(prompt)
+
+                    # Convert to string safely
+                    if isinstance(raw_response, list):
+                        response_text = raw_response[0] if len(raw_response) > 0 else "No response"
+                    elif isinstance(raw_response, dict):
+                        response_text = raw_response.get("generated_text", str(raw_response))
+                    else:
+                        response_text = str(raw_response)
+
                     st.subheader("👑 Queen K Says:")
-                    st.success(response)
+                    st.success(response_text)
 
                 else:
                     # Conversational models

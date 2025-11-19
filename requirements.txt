@@ -1,0 +1,8 @@
+streamlit
+langchain-huggingface
+langchain-core
+python-dotenv
+huggingface_hub
+transformers
+torch
+accelerate
